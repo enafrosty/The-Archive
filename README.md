@@ -129,10 +129,10 @@ The client runs on port `5173` via Vite.
 ## 💵 Donations
 
 Donation via Binance Pay
-**Binance ID**: `449271515`
+### **Binance ID**: `449271515`
 ### USDT (BNB Smart Chain)
 `0x02c09c2e6155e8e336d940bdfd80c9a9558a24e0`
-**Redotpay UID**: `1931398117`
+### **Redotpay UID**: `1931398117`
 
 ---
 
@@ -150,4 +150,5 @@ For support, email iyad@heyfrosty.space or send a message on discord @enafrosty.
 ## 😊 Authors
 
 - [@enafrosty](https://www.github.com/enafrosty)
+
 
