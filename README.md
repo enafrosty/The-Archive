@@ -1,5 +1,5 @@
-# Anime Streaming & Library Project
-
+# THE ARCHIVE - Anime Streaming & Library Project
+![logo](https://i.imgur.com/ODUZzpG.png)
 A high-performance, comprehensive anime streaming and management platform. This project combines advanced web scraping, torrent streaming, Mega.nz integration, and a sophisticated library management system into a single, seamless experience.
 
 ## 🚀 Features
@@ -126,5 +126,28 @@ The client runs on port `5173` via Vite.
 
 ---
 
+## 💵 Donations
+
+Donation via Binance Pay
+**Binance ID**: `449271515`
+### USDT (BNB Smart Chain)
+`0x02c09c2e6155e8e336d940bdfd80c9a9558a24e0`
+**Redotpay UID**: `1931398117`
+
+---
+
 ## 📜 License
 This project is for educational purposes. All media content and metadata are owned by their respective creators.
+
+---
+
+## 📣 Support
+
+For support, email iyad@heyfrosty.space or send a message on discord @enafrosty.
+
+---
+
+## 😊 Authors
+
+- [@enafrosty](https://www.github.com/enafrosty)
+
