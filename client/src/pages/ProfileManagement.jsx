@@ -137,7 +137,7 @@ const ProfileManagement = () => {
                             </div>
 
                             <form onSubmit={handleUpdatePin} className="space-y-4">
-                                {profile.pin && (
+                                {profile.hasPin && (
                                     <div>
                                         <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">Original PIN</label>
                                         <input
@@ -154,7 +154,7 @@ const ProfileManagement = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
-                                            {profile.pin ? 'New PIN' : 'Set PIN'}
+                                            {profile.hasPin ? 'New PIN' : 'Set PIN'}
                                         </label>
                                         <input
                                             type="password"

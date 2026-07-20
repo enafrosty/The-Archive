@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+client/dist/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+server/.env
+
+# Databases (regenerated at runtime by db.js)
+*.db
+*.sqlite
+*.sqlite3
+server/anime.db
+
+# Logs
+*.log
+server/server.log
+
+# User media (uploads & torrent downloads)
+server/uploads/
+server/downloads/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

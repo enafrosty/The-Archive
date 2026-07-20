@@ -113,8 +113,18 @@ These scripts will handle dependency installation (`npm install`) for both clien
 
 ## ⚙️ Configuration
 
-The server runs on port `5000` by default. You can change this by setting the `PORT` environment variable.
-The client runs on port `5173` via Vite.
+Server configuration is done via environment variables (copy `server/.env.example` to `server/.env`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5000` | API server port. |
+| `ADMIN_TOKEN` | _(unset)_ | Protects destructive/admin API routes (library scan/clear, series & user deletion, uploads, downloads, library paths). When unset, those routes stay open and the server logs a warning on first use — **set this for any network-exposed deployment.** |
+| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated browser origins allowed to call the API. |
+| `MAX_UPLOAD_BYTES` | `10737418240` (10 GiB) | Max size for library video uploads. |
+
+The client runs on port `5173` via Vite. When `ADMIN_TOKEN` is set, the web client authorizes admin actions using the browser `localStorage` key `adminToken` (set it to the same value once in your browser).
+
+> **Security note:** This project historically shipped with no API authentication. These settings add an opt-in operator token, CORS restrictions, and upload validation. For a hardened setup, always set `ADMIN_TOKEN` and `CORS_ORIGINS`, and serve over HTTPS behind a reverse proxy.
 
 ---
 

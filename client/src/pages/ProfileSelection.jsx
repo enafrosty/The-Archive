@@ -13,7 +13,7 @@ const ProfileSelection = () => {
     const [pinError, setPinError] = useState('');
 
     const handleLogin = async (selectedUser) => {
-        if (selectedUser.pin) {
+        if (selectedUser.hasPin) {
             setPinUser(selectedUser);
             setPinInput('');
             setPinError('');
@@ -63,7 +63,7 @@ const ProfileSelection = () => {
                                 <span className="text-5xl font-black text-zinc-600 group-hover:text-white transition-colors">{u.username[0].toUpperCase()}</span>
                             )}
 
-                            {u.pin && (
+                            {u.hasPin && (
                                 <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md p-1.5 rounded-lg border border-white/10">
                                     <Lock size={14} className="text-white" />
                                 </div>

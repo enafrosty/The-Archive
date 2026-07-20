@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
-const multr = require('multer');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -10,6 +9,7 @@ const fs = require('fs');
 const torrentClient = require('./torrent_client');
 const libraryManager = require('./library_manager');
 const megaClient = require('./mega_client');
+const { requireAdmin } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,9 +29,26 @@ console.error = (...args) => {
     originalError.apply(console, args);
 };
 
-app.use(cors());
+// Restrict CORS to configured origins (comma-separated CORS_ORIGINS env,
+// defaulting to the local Vite client). Requests without an Origin header
+// (non-browser clients, the <video> element) are allowed through.
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+}));
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded media, but never let the browser sniff/execute it as HTML/JS.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff')
+}));
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -39,16 +56,37 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
 }
 
-// Multer config
+// Multer config — validated per upload type (extension allowlist + size caps).
+const VIDEO_EXTS = ['.mp4', '.mkv', '.webm', '.avi'];
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
+        // Always generate a safe name; never trust the original extension casing.
+        cb(null, Date.now() + path.extname(file.originalname).toLowerCase());
     }
 });
-const upload = multer({ storage: storage });
+
+const extFilter = (allowedExts) => (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExts.includes(ext)) return cb(null, true);
+    cb(new Error(`Unsupported file type "${ext || file.originalname}". Allowed: ${allowedExts.join(', ')}`));
+};
+
+const uploadVideo = multer({
+    storage,
+    limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 10 * 1024 * 1024 * 1024 }, // 10 GiB
+    fileFilter: extFilter(VIDEO_EXTS)
+});
+
+const uploadAvatar = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MiB
+    fileFilter: extFilter(IMAGE_EXTS)
+});
 
 // Restore incomplete downloads on startup
 setTimeout(async () => {
@@ -59,7 +97,7 @@ setTimeout(async () => {
 // --- Library & Media Server Routes ---
 
 // Scan Library
-app.post('/api/library/scan', async (req, res) => {
+app.post('/api/library/scan', requireAdmin, async (req, res) => {
     try {
         await libraryManager.scanLibrary();
         res.json({ success: true, message: 'Scan started' });
@@ -69,7 +107,7 @@ app.post('/api/library/scan', async (req, res) => {
 });
 
 // Delete Series
-app.delete('/api/series/:id', async (req, res) => {
+app.delete('/api/series/:id', requireAdmin, async (req, res) => {
     try {
         const result = await libraryManager.deleteSeries(req.params.id);
         res.json(result);
@@ -79,7 +117,7 @@ app.delete('/api/series/:id', async (req, res) => {
 });
 
 // Clear All Library Series & Episodes
-app.delete('/api/library/clear', async (req, res) => {
+app.delete('/api/library/clear', requireAdmin, async (req, res) => {
     try {
         const result = await libraryManager.clearLibrary();
         res.json(result);
@@ -136,7 +174,7 @@ app.get('/api/library/series/:id', (req, res) => {
 });
 
 // Add Download
-app.post('/api/downloads', async (req, res) => {
+app.post('/api/downloads', requireAdmin, async (req, res) => {
     const { magnet } = req.body;
     if (!magnet) return res.status(400).json({ error: 'Magnet link required' });
 
@@ -155,7 +193,7 @@ app.get('/api/downloads', async (req, res) => {
 });
 
 // Remove Download
-app.delete('/api/downloads/:infoHash', async (req, res) => {
+app.delete('/api/downloads/:infoHash', requireAdmin, async (req, res) => {
     const { infoHash } = req.params;
     const { deleteFiles } = req.body;
     await torrentClient.removeTorrent(infoHash, deleteFiles);
@@ -247,7 +285,7 @@ app.get('/api/stream/library/:episodeId', (req, res) => {
 
 
 // Upload File (Smart Organize)
-app.post('/api/library/upload', upload.single('file'), async (req, res) => {
+app.post('/api/library/upload', requireAdmin, uploadVideo.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     try {
@@ -263,7 +301,7 @@ app.post('/api/library/upload', upload.single('file'), async (req, res) => {
 });
 
 // Add Library Path
-app.post('/api/library/paths', (req, res) => {
+app.post('/api/library/paths', requireAdmin, (req, res) => {
     const { path, type, label } = req.body;
     if (!path || !type) return res.status(400).json({ error: 'Path and Type required' });
 
@@ -282,7 +320,7 @@ app.get('/api/library/paths', (req, res) => {
 });
 
 // Remove Library Path
-app.delete('/api/library/paths/:id', (req, res) => {
+app.delete('/api/library/paths/:id', requireAdmin, (req, res) => {
     db.run("DELETE FROM library_paths WHERE id = ?", [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
@@ -473,10 +511,15 @@ app.get('/api/home', async (req, res) => {
 
 // Get all users
 app.get('/api/users', (req, res) => {
-    db.all("SELECT * FROM users", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+    // SECURITY: never expose the `pin` column. Return a boolean `hasPin` flag instead.
+    db.all(
+        "SELECT id, username, avatar, last_seen, current_activity, (pin IS NOT NULL AND pin != '') AS hasPin FROM users",
+        [],
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        }
+    );
 });
 
 // Create user
@@ -486,12 +529,13 @@ app.post('/api/users', (req, res) => {
 
     db.run("INSERT INTO users (username, avatar, pin) VALUES (?, ?, ?)", [username, avatar, pin || null], function (err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID, username, avatar, pin });
+        // SECURITY: do not echo the PIN back to the client.
+        res.json({ id: this.lastID, username, avatar, hasPin: !!pin });
     });
 });
 
 // Delete user
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     // Also delete history and lists to clean up
     db.serialize(() => {
@@ -543,7 +587,7 @@ app.post('/api/users/:id/set-pin', (req, res) => {
 });
 
 // Upload Avatar
-app.post('/api/users/:id/avatar', upload.single('avatar'), (req, res) => {
+app.post('/api/users/:id/avatar', uploadAvatar.single('avatar'), (req, res) => {
     const { id } = req.params;
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
@@ -743,7 +787,20 @@ app.delete('/api/users/:id/data/favorites', (req, res) => {
     });
 });
 
-// ... (Existing start server)
+// Centralized error handler for upload validation (Multer) and CORS rejections,
+// so bad uploads / disallowed origins return a clean status instead of crashing.
+app.use((err, req, res, next) => {
+    if (!err) return next();
+    if (/not allowed by CORS/i.test(err.message)) {
+        return res.status(403).json({ error: err.message });
+    }
+    if (err.name === 'MulterError' || /Unsupported file type/i.test(err.message)) {
+        return res.status(400).json({ error: err.message });
+    }
+    console.error('Unhandled error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+});
+
 // Start Server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
