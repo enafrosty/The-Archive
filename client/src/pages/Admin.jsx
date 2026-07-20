@@ -397,7 +397,7 @@ const Admin = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-bold text-lg truncate">{u.username}</div>
-                                            <div className="text-xs font-bold text-zinc-600 uppercase tracking-widest">{u.pin ? 'Secured' : 'Open'}</div>
+                                            <div className="text-xs font-bold text-zinc-600 uppercase tracking-widest">{u.hasPin ? 'Secured' : 'Open'}</div>
                                             {u.last_seen && <div className="text-[10px] text-zinc-500 mt-1">Last seen: {new Date(u.last_seen).toLocaleTimeString()}</div>}
                                         </div>
                                     </div>

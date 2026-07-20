@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }) => {
             const { data } = await api.get('/users');
             const resolvedUsers = data.map(u => ({
                 ...u,
+                hasPin: !!u.hasPin,
                 avatar: resolveAvatarUrl(u.avatar)
             }));
             setUsers(resolvedUsers);
